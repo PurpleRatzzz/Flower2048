@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f1dc" />
+    <title>花漾 2048</title>
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="sky" aria-hidden="true">
+      <span class="cloud cloud-one"></span>
+      <span class="cloud cloud-two"></span>
+      <span class="leaf leaf-one"></span>
+      <span class="leaf leaf-two"></span>
+      <span class="leaf leaf-three"></span>
+    </div>
+
+    <main class="game-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><i></i>
+          </div>
+          <div>
+            <h1>花漾 <strong>2048</strong></h1>
+            <p>合并花朵，绽放整座花园</p>
+          </div>
+        </div>
+
+        <div class="scores" aria-label="游戏分数">
+          <div class="score-box">
+            <span>得分</span>
+            <strong id="score">0</strong>
+            <b id="score-add" aria-hidden="true"></b>
+          </div>
+          <div class="score-box best">
+            <span>最佳</span>
+            <strong id="best">0</strong>
+          </div>
+        </div>
+      </header>
+
+      <section class="garden-panel" aria-labelledby="garden-title">
+        <div class="game-toolbar">
+          <div class="goal-copy">
+            <span class="eyebrow">今日花园</span>
+            <h2 id="garden-title">让牡丹盛开吧</h2>
+          </div>
+          <div class="actions">
+            <button id="sound-btn" class="icon-btn" type="button" aria-label="关闭音效与音乐" title="关闭音效与音乐">
+              <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Zm4.5 3.5a5 5 0 0 1 0 7M18 6a8 8 0 0 1 0 12"/></svg>
+              <svg class="sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Zm4 5 5 5m0-5-5 5"/></svg>
+            </button>
+            <button id="undo-btn" class="tool-btn" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7-5 5 5 5M5 12h8a6 6 0 0 1 6 6"/></svg>
+              撤一步
+            </button>
+            <button id="new-btn" class="tool-btn primary" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              新花园
+            </button>
+          </div>
+        </div>
+
+        <div class="board-wrap">
+          <div id="board" class="board" role="application" aria-label="花朵 2048 游戏棋盘" tabindex="0">
+            <div id="grid" class="grid" aria-hidden="true"></div>
+            <div id="tiles" class="tiles"></div>
+            <div id="petals" class="petals" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div id="tool-shelf" class="tool-shelf" aria-label="花园道具">
+          <button class="power-btn" type="button" data-tool="remove" aria-label="铲除道具，剩余 10 次" title="铲除一张花朵">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 19 6-6M4 20h6M14 4l6 6M13 5l6 6-7 7-6-6 7-7Z"/></svg>
+            <span>铲除</span><strong data-tool-count="remove">10</strong>
+          </button>
+          <button class="power-btn" type="button" data-tool="upgrade" aria-label="升级道具，剩余 10 次" title="将一张花朵变为高级花朵">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V4M6 10l6-6 6 6M5 20h14"/></svg>
+            <span>升级</span><strong data-tool-count="upgrade">10</strong>
+          </button>
+          <button class="power-btn" type="button" data-tool="swap" aria-label="交换道具，剩余 10 次" title="交换两张花朵的位置">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h12l-3-3M17 17H5l3 3M19 7l-3 3M5 17l3-3"/></svg>
+            <span>交换</span><strong data-tool-count="swap">10</strong>
+          </button>
+        </div>
+        <div id="tool-status" class="tool-status" aria-live="polite"></div>
+
+        <div class="garden-floor" aria-hidden="true">
+          <span class="grass g1"></span><span class="grass g2"></span><span class="grass g3"></span>
+          <span class="grass g4"></span><span class="grass g5"></span><span class="grass g6"></span>
+        </div>
+      </section>
+
+      <section class="progress-section" aria-label="花朵成长图鉴">
+        <div class="progress-heading">
+          <span>花朵图鉴</span>
+          <div class="progress-meta">
+            <strong id="collection-count">1 / 11</strong>
+            <button id="catalog-btn" class="catalog-btn" type="button" aria-label="查看完整花朵图鉴">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16ZM4 5.5v16M8 7h8M8 11h8"/></svg>
+              <span>完整图鉴</span>
+            </button>
+          </div>
+        </div>
+        <div id="collection" class="collection"></div>
+      </section>
+
+      <p class="hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 移动花朵 <span></span> 手机可直接滑动</p>
+    </main>
+
+    <div id="modal" class="modal" hidden>
+      <div class="modal-backdrop"></div>
+      <section class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div id="modal-flower" class="modal-flower" aria-hidden="true"></div>
+        <span id="modal-kicker" class="modal-kicker">花园盛放</span>
+        <h2 id="modal-title">牡丹开花啦！</h2>
+        <p id="modal-message">你培育出了最灿烂的花朵。</p>
+        <div class="modal-actions">
+          <button id="continue-btn" class="tool-btn" type="button">继续培育</button>
+          <button id="restart-btn" class="tool-btn primary" type="button">再种一园</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="catalog-modal" class="modal catalog-modal" hidden>
+      <div id="catalog-backdrop" class="modal-backdrop"></div>
+      <section class="catalog-content" role="dialog" aria-modal="true" aria-labelledby="catalog-title">
+        <div class="catalog-header">
+          <div>
+            <span class="modal-kicker">花园收藏册</span>
+            <h2 id="catalog-title">花朵图鉴</h2>
+            <p>从一粒花种，到整座花园的盛放。</p>
+          </div>
+          <button id="catalog-close" class="icon-btn catalog-close" type="button" aria-label="关闭完整图鉴" title="关闭图鉴">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div id="catalog-grid" class="catalog-grid"></div>
+      </section>
+    </div>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
