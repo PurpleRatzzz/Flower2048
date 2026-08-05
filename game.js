@@ -51,6 +51,7 @@ let toolCounts = { remove: 10, upgrade: 10, swap: 10 };
 let activeTool = null;
 let selectedIndex = null;
 let toolStatusTimer = null;
+let toolPointerStart = null;
 let touchStart = null;
 let audioContext = null;
 let musicTimer = null;
@@ -104,7 +105,7 @@ function flowerSvg(flower) {
   return `<svg viewBox="0 0 100 100" aria-hidden="true">${art}</svg>`;
 }
 
-function render() {
+function render({ animateTiles = true } = {}) {
   tilesEl.innerHTML = '';
   let highest = 2;
   board.forEach((value, index) => {
@@ -113,7 +114,7 @@ function render() {
     discovered.add(value);
     const flower = flowerFor(value);
     const tile = document.createElement('div');
-    tile.className = `tile${value === window.lastMergedValue ? ' merged' : ''}${activeTool ? ' tool-target' : ''}${selectedIndex === index ? ' selected' : ''}`;
+    tile.className = `tile${value === window.lastMergedValue ? ' merged' : ''}${activeTool ? ' tool-target' : ''}${selectedIndex === index ? ' selected' : ''}${animateTiles ? '' : ' no-animate'}`;
     tile.style.setProperty('--row', Math.floor(index / 4));
     tile.style.setProperty('--col', index % 4);
     tile.style.setProperty('--tile-bg', flower.bg);
@@ -439,7 +440,7 @@ function undo() {
   activeTool = null;
   selectedIndex = null;
   previous = null;
-  render();
+  render({ animateTiles: false });
   saveGame();
 }
 
@@ -458,18 +459,34 @@ document.addEventListener('keydown', (event) => {
 });
 
 boardEl.addEventListener('pointerdown', (event) => {
-  touchStart = { x: event.clientX, y: event.clientY };
-  boardEl.setPointerCapture(event.pointerId);
+  touchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, captured: false };
+});
+
+boardEl.addEventListener('pointermove', (event) => {
+  if (!touchStart || touchStart.captured) return;
+  const dx = event.clientX - touchStart.x;
+  const dy = event.clientY - touchStart.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) > 12) {
+    boardEl.setPointerCapture(event.pointerId);
+    touchStart.captured = true;
+  }
 });
 
 boardEl.addEventListener('pointerup', (event) => {
   if (!touchStart) return;
   const dx = event.clientX - touchStart.x;
   const dy = event.clientY - touchStart.y;
+  if (touchStart.captured && boardEl.hasPointerCapture(event.pointerId)) {
+    boardEl.releasePointerCapture(event.pointerId);
+  }
   touchStart = null;
   if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
   if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
   else move(dy > 0 ? 'down' : 'up');
+});
+
+boardEl.addEventListener('pointercancel', () => {
+  touchStart = null;
 });
 
 toolShelfEl.addEventListener('click', (event) => {
@@ -478,18 +495,17 @@ toolShelfEl.addEventListener('click', (event) => {
   const tool = button.dataset.tool;
   activeTool = activeTool === tool ? null : tool;
   selectedIndex = null;
-  render();
+  toolPointerStart = null;
+  render({ animateTiles: false });
 });
 
-tilesEl.addEventListener('click', (event) => {
-  const tile = event.target.closest('.tile');
-  if (!tile || !activeTool) return;
-  const index = Number(tile.dataset.index);
+function useToolOnTile(index) {
+  if (!activeTool) return;
   if (!Number.isInteger(index) || !board[index]) return;
 
   if (activeTool === 'swap' && selectedIndex === null) {
     selectedIndex = index;
-    render();
+    render({ animateTiles: false });
     return;
   }
 
@@ -509,7 +525,7 @@ tilesEl.addEventListener('click', (event) => {
     if (selectedIndex === index) {
       selectedIndex = null;
       previous = null;
-      render();
+      render({ animateTiles: false });
       return;
     }
     [board[selectedIndex], board[index]] = [board[index], board[selectedIndex]];
@@ -519,10 +535,45 @@ tilesEl.addEventListener('click', (event) => {
   activeTool = null;
   selectedIndex = null;
   window.lastMergedValue = 0;
-  render();
+  render({ animateTiles: false });
   saveGame();
   playTone(0);
   showToolResult(resultName);
+}
+
+tilesEl.addEventListener('pointerdown', (event) => {
+  if (!activeTool) return;
+  const tile = event.target.closest('.tile');
+  if (!tile) return;
+  event.preventDefault();
+  event.stopPropagation();
+  toolPointerStart = {
+    x: event.clientX,
+    y: event.clientY,
+    index: Number(tile.dataset.index),
+    pointerId: event.pointerId
+  };
+});
+
+tilesEl.addEventListener('pointermove', (event) => {
+  if (!toolPointerStart) return;
+  event.preventDefault();
+  event.stopPropagation();
+});
+
+tilesEl.addEventListener('pointerup', (event) => {
+  if (!toolPointerStart) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const start = toolPointerStart;
+  toolPointerStart = null;
+  const dx = event.clientX - start.x;
+  const dy = event.clientY - start.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 16) useToolOnTile(start.index);
+});
+
+tilesEl.addEventListener('pointercancel', () => {
+  toolPointerStart = null;
 });
 
 undoBtn.addEventListener('click', undo);
@@ -535,7 +586,7 @@ catalogBackdropEl.addEventListener('click', closeCatalog);
 soundBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   localStorage.setItem('flower2048-sound', soundEnabled ? 'on' : 'off');
-  render();
+  render({ animateTiles: false });
   if (soundEnabled) {
     playTone(8);
     startMusic();

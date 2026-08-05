@@ -255,6 +255,7 @@ h1, h2, p { margin: 0; }
 }
 
 .tile.merged { animation: tileMerge .32s cubic-bezier(.2,.8,.2,1.25) both; }
+.tile.no-animate { animation: none; }
 .tile.tool-target { cursor: pointer; }
 .tile.tool-target:hover { outline: 3px solid rgba(244,198,79,.9); outline-offset: -3px; filter: brightness(1.04); }
 .tile.selected { outline: 3px solid #efa85d; outline-offset: -3px; box-shadow: inset 0 -5px rgba(83,72,38,.07), 0 0 0 3px rgba(244,198,79,.35), 0 4px 8px rgba(24,66,48,.2); }
