@@ -284,7 +284,7 @@ h1, h2, p { margin: 0; }
 .grass { position: absolute; bottom: 7px; width: 6px; height: 18px; border-radius: 100% 0; border-left: 3px solid #63a264; transform: rotate(18deg); }
 .g1 { left: 4%; }.g2 { left: 11%; transform: rotate(-20deg); }.g3 { left: 18%; }.g4 { right: 7%; }.g5 { right: 14%; transform: rotate(-22deg); }.g6 { right: 21%; }
 
-.tool-shelf { display: flex; justify-content: center; gap: 9px; margin: 15px auto 0; }
+.tool-shelf { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin: 15px auto 0; }
 .power-btn { display: inline-flex; align-items: center; gap: 6px; min-width: 108px; min-height: 38px; padding: 0 10px; border: 2px solid rgba(36,116,90,.14); border-radius: 7px; color: var(--green-dark); background: #f5f8e9; font-size: 12px; font-weight: 900; cursor: pointer; transition: transform .16s ease, background .16s ease, border-color .16s ease, opacity .16s ease; }
 .power-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .power-btn strong { min-width: 20px; margin-left: auto; padding: 2px 5px; border-radius: 4px; color: #fff; background: var(--green); font-size: 10px; line-height: 1.2; }
@@ -364,20 +364,23 @@ kbd { min-width: 20px; padding: 2px 4px; border: 1px solid rgba(56,94,73,.25); b
 .catalog-modal { overflow: auto; align-items: center; }
 .catalog-content {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: min(100%, 720px);
   max-height: min(780px, calc(100vh - 32px));
   padding: 24px;
+  overflow: hidden;
   border: 3px solid #fff7d7;
   border-radius: 8px;
   background: var(--paper);
   box-shadow: 0 22px 70px rgba(14,51,38,.3);
   animation: modalIn .3s cubic-bezier(.2,.85,.25,1.1);
 }
-.catalog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 17px; }
+.catalog-header { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 17px; }
 .catalog-header h2 { margin-top: 3px; font-family: "ZCOOL KuaiLe", "PingFang SC", sans-serif; font-size: 30px; font-weight: 400; }
 .catalog-header p { margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 800; }
 .catalog-close { flex: 0 0 auto; }
-.catalog-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-height: calc(100vh - 160px); overflow-y: auto; padding: 2px 3px 4px 2px; scrollbar-width: thin; scrollbar-color: #99bea0 transparent; }
+.catalog-grid { min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; max-height: min(620px, calc(100vh - 160px)); overflow-y: auto; padding: 2px 3px 4px 2px; scrollbar-width: thin; scrollbar-color: #99bea0 transparent; }
 .catalog-item { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 144px; padding: 10px 7px 8px; border: 2px solid rgba(40,95,72,.12); border-radius: 7px; background: var(--flower-bg); box-shadow: inset 0 -4px rgba(70,95,66,.05); text-align: center; }
 .catalog-art { width: 76px; height: 76px; }
 .catalog-art svg { width: 100%; height: 100%; filter: drop-shadow(0 3px 2px rgba(45,67,40,.12)); }
@@ -397,7 +400,7 @@ kbd { min-width: 20px; padding: 2px 4px; border: 1px solid rgba(56,94,73,.25); b
   .game-toolbar { align-items: flex-end; margin-bottom: 12px; }
   .goal-copy h2 { font-size: 15px; }
   .tool-shelf { gap: 6px; margin-top: 12px; }
-  .power-btn { min-width: 0; flex: 1; padding: 0 7px; font-size: 11px; }
+  .power-btn { min-width: 0; flex: 1 1 calc(50% - 3px); padding: 0 7px; font-size: 11px; }
   .power-btn svg { width: 16px; height: 16px; }
   .progress-meta { gap: 5px; }
   .catalog-btn { padding: 3px 4px; font-size: 10px; }
@@ -408,7 +411,7 @@ kbd { min-width: 20px; padding: 2px 4px; border: 1px solid rgba(56,94,73,.25); b
   .catalog-header { margin-bottom: 11px; }
   .catalog-header h2 { font-size: 27px; }
   .catalog-header p { font-size: 11px; }
-  .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: calc(100vh - 135px); }
+  .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .catalog-item { min-height: 130px; }
   .catalog-art { width: 66px; height: 66px; }
   .board { border-width: 3px; }

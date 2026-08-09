@@ -46,7 +46,7 @@
         <div class="game-toolbar">
           <div class="goal-copy">
             <span class="eyebrow">今日花园</span>
-            <h2 id="garden-title">让牡丹盛开吧</h2>
+            <h2 id="garden-title">让昙花盛开吧</h2>
           </div>
           <div class="actions">
             <button id="sound-btn" class="icon-btn" type="button" aria-label="关闭音效与音乐" title="关闭音效与音乐">
@@ -72,20 +72,8 @@
           </div>
         </div>
 
-        <div id="tool-shelf" class="tool-shelf" aria-label="花园道具">
-          <button class="power-btn" type="button" data-tool="remove" aria-label="铲除道具，剩余 10 次" title="铲除一张花朵">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 19 6-6M4 20h6M14 4l6 6M13 5l6 6-7 7-6-6 7-7Z"/></svg>
-            <span>铲除</span><strong data-tool-count="remove">10</strong>
-          </button>
-          <button class="power-btn" type="button" data-tool="upgrade" aria-label="升级道具，剩余 10 次" title="将一张花朵变为高级花朵">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V4M6 10l6-6 6 6M5 20h14"/></svg>
-            <span>升级</span><strong data-tool-count="upgrade">10</strong>
-          </button>
-          <button class="power-btn" type="button" data-tool="swap" aria-label="交换道具，剩余 10 次" title="交换两张花朵的位置">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h12l-3-3M17 17H5l3 3M19 7l-3 3M5 17l3-3"/></svg>
-            <span>交换</span><strong data-tool-count="swap">10</strong>
-          </button>
-        </div>
+        <!-- 道具按钮由 game.js 的 TOOLS 表生成 -->
+        <div id="tool-shelf" class="tool-shelf" aria-label="花园道具"></div>
         <div id="tool-status" class="tool-status" aria-live="polite"></div>
 
         <div class="garden-floor" aria-hidden="true">
@@ -98,7 +86,7 @@
         <div class="progress-heading">
           <span>花朵图鉴</span>
           <div class="progress-meta">
-            <strong id="collection-count">1 / 11</strong>
+            <strong id="collection-count">1 / 17</strong>
             <button id="catalog-btn" class="catalog-btn" type="button" aria-label="查看完整花朵图鉴">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16ZM4 5.5v16M8 7h8M8 11h8"/></svg>
               <span>完整图鉴</span>
@@ -116,7 +104,7 @@
       <section class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div id="modal-flower" class="modal-flower" aria-hidden="true"></div>
         <span id="modal-kicker" class="modal-kicker">花园盛放</span>
-        <h2 id="modal-title">牡丹开花啦！</h2>
+        <h2 id="modal-title">昙花开花啦！</h2>
         <p id="modal-message">你培育出了最灿烂的花朵。</p>
         <div class="modal-actions">
           <button id="continue-btn" class="tool-btn" type="button">继续培育</button>

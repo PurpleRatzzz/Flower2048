@@ -9,8 +9,85 @@ const FLOWERS = [
   { value: 256, name: '荷花', bg: '#d6ece7', ink: '#3e7473', kind: 'lotus', colors: ['#f59daf', '#e7678b'] },
   { value: 512, name: '山茶花', bg: '#f6d0be', ink: '#914d3a', kind: 'camellia', colors: ['#ee7963', '#c64543'] },
   { value: 1024, name: '绣球花', bg: '#d7e1f2', ink: '#486d8d', kind: 'hydrangea', colors: ['#6fa2d7', '#597cbc'] },
-  { value: 2048, name: '牡丹', bg: '#eed0e2', ink: '#773e68', kind: 'peony', colors: ['#de71ab', '#b74f91'] }
+  { value: 2048, name: '牡丹', bg: '#eed0e2', ink: '#773e68', kind: 'peony', colors: ['#de71ab', '#b74f91'] },
+  { value: 4096, name: '樱花', bg: '#f5dce4', ink: '#855367', kind: 'cherry', colors: ['#f09bb3', '#d56d8d'] },
+  { value: 8192, name: '鸢尾', bg: '#d9dcf1', ink: '#4f5d8d', kind: 'iris', colors: ['#747bc8', '#535aaa'] },
+  { value: 16384, name: '兰花', bg: '#e8d6ee', ink: '#704f7d', kind: 'orchid', colors: ['#c17ccb', '#914f9e'] },
+  { value: 32768, name: '百合', bg: '#f4e8c9', ink: '#75633f', kind: 'lily', colors: ['#fff6dc', '#e49b52'] },
+  { value: 65536, name: '天堂鸟', bg: '#f6d5bb', ink: '#865239', kind: 'bird', colors: ['#ef8c4b', '#496f9e'] },
+  { value: 131072, name: '昙花', bg: '#d8e6ef', ink: '#496275', kind: 'nightbloom', colors: ['#fffdf1', '#9eb9ce'] }
 ];
+
+// 道具总表：新增/删除道具、调整初始次数都只改这里。
+// target 决定操作方式：tile 点一张卡、pair 点两张卡、board 点按钮立即生效（由 run 执行）。
+const TOOLS = [
+  {
+    id: 'remove',
+    name: '铲除',
+    title: '铲除一张花朵',
+    start: 99,
+    target: 'tile',
+    hint: '点击一张花朵卡片',
+    result: (flower) => `已铲除${flower.name}`,
+    icon: 'm6 19 6-6M4 20h6M14 4l6 6M13 5l6 6-7 7-6-6 7-7Z'
+  },
+  {
+    id: 'upgrade',
+    name: '升级',
+    title: '将一张花朵变为高级花朵',
+    start: 99,
+    target: 'tile',
+    hint: '点击一张花朵卡片',
+    result: (flower) => `已将${flower.name}升级`,
+    icon: 'M12 20V4M6 10l6-6 6 6M5 20h14'
+  },
+  {
+    id: 'swap',
+    name: '交换',
+    title: '交换两张花朵的位置',
+    start: 99,
+    target: 'pair',
+    hint: '点击第一张花朵卡片',
+    hintNext: '再点击第二张花朵卡片',
+    result: () => '已交换两张花朵',
+    icon: 'M7 7h12l-3-3M17 17H5l3 3M19 7l-3 3M5 17l3-3'
+  },
+  {
+    id: 'sort',
+    name: '整理',
+    title: '把所有花朵从小到大排好',
+    start: 99,
+    target: 'board',
+    run: () => tidyBoard(),
+    icon: 'M4 20h16M6 20v-4M12 20V11M18 20V5'
+  }
+];
+
+function toolById(id) {
+  return TOOLS.find((tool) => tool.id === id);
+}
+
+// 唯一的次数来源：读档时补上新道具、丢掉已删除的道具、修掉脏数据。
+function makeToolCounts(saved = {}) {
+  return Object.fromEntries(TOOLS.map((tool) => [
+    tool.id,
+    Number.isFinite(saved[tool.id]) && saved[tool.id] >= 0 ? saved[tool.id] : tool.start
+  ]));
+}
+
+function spendTool(id) {
+  toolCounts[id] = Math.max(0, toolCounts[id] - 1);
+}
+
+// 给道具补充次数（充值 / 奖励 / 后台发放都走这里），amount 为负数即扣减。
+function grantTool(id, amount = 1) {
+  if (!toolById(id)) return false;
+  toolCounts[id] = Math.max(0, toolCounts[id] + amount);
+  render({ animateTiles: false });
+  saveGame();
+  return true;
+}
+window.grantTool = grantTool;
 
 const gridEl = document.querySelector('#grid');
 const tilesEl = document.querySelector('#tiles');
@@ -45,12 +122,12 @@ let best = Number(localStorage.getItem('flower2048-best') || 0);
 let discovered = new Set([2]);
 let previous = null;
 let won = false;
-let keepPlaying = false;
 let soundEnabled = localStorage.getItem('flower2048-sound') !== 'off';
-let toolCounts = { remove: 10, upgrade: 10, swap: 10 };
+let toolCounts = makeToolCounts();
 let activeTool = null;
 let selectedIndex = null;
 let toolStatusTimer = null;
+let outcomeTimer = null;
 let toolPointerStart = null;
 let touchStart = null;
 let audioContext = null;
@@ -70,6 +147,11 @@ for (let i = 0; i < 16; i += 1) {
   gridEl.appendChild(cell);
 }
 
+toolShelfEl.innerHTML = TOOLS.map((tool) => `<button class="power-btn" type="button" data-tool="${tool.id}">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${tool.icon}"/></svg>
+  <span>${tool.name}</span><strong data-tool-count="${tool.id}"></strong>
+</button>`).join('');
+
 function flowerFor(value) {
   return FLOWERS.find((flower) => flower.value === value) || FLOWERS.at(-1);
 }
@@ -82,7 +164,21 @@ function petals(count, radius, color, inner = '#f4c64f', offset = 0) {
   return `${items}<circle cx="50" cy="50" r="${count > 9 ? 15 : 12}" fill="${inner}"/>`;
 }
 
+function radialPetals(path, count, color, stroke = 'none', strokeWidth = 0, offset = 0) {
+  return Array.from({ length: count }, (_, i) => {
+    const angle = (360 / count) * i + offset;
+    return `<path d="${path}" fill="${color}" stroke="${stroke}" stroke-width="${strokeWidth}" transform="rotate(${angle} 50 50)"/>`;
+  }).join('');
+}
+
+// 花朵 SVG 是纯函数且体量不小，按花种缓存，避免每次 render 重新拼字符串。
+const svgCache = new Map();
 function flowerSvg(flower) {
+  if (!svgCache.has(flower.value)) svgCache.set(flower.value, buildFlowerSvg(flower));
+  return svgCache.get(flower.value);
+}
+
+function buildFlowerSvg(flower) {
   const [a, b] = flower.colors;
   const stem = `<path d="M50 78 C49 68 50 58 50 48" fill="none" stroke="#3d8752" stroke-width="5" stroke-linecap="round"/><path d="M48 67c-13-10-19 0-13 7 5 5 11 1 13-1" fill="#65a85b"/><path d="M52 62c11-10 18-2 13 5-4 5-10 2-13 0" fill="#79b969"/>`;
   let art = '';
@@ -101,6 +197,19 @@ function flowerSvg(flower) {
     art = stem + blooms.map(([x,y], i) => `<g transform="translate(${x} ${y}) translate(-16 -16) scale(.32)">${petals(5, 19, i % 2 ? a : b, '#f6dd91', 0)}</g>`).join('');
   }
   if (flower.kind === 'peony') art = `${stem}<g>${petals(10, 25, a, '#f5bd68', 12)}<g transform="translate(50 50) scale(.72) translate(-50 -50)">${petals(8, 23, '#f09ac5', '#f7c95e', 0)}</g><g transform="translate(50 50) scale(.42) translate(-50 -50)">${petals(7, 20, b, '#ffd572', 8)}</g></g>`;
+  if (flower.kind === 'cherry') {
+    const petal = 'M50 52C44 47 38 38 38 28c0-8 5-14 11-16 1 0 1 3 1 5 0-2 0-5 1-5 6 2 11 8 11 16 0 10-6 19-12 24Z';
+    art = `${stem}<g>${radialPetals(petal, 5, a, '#e88ba4', 1.2, 0)}<circle cx="50" cy="51" r="8" fill="#f6ca58"/><circle cx="50" cy="51" r="4" fill="${b}"/><g fill="#fff6d2"><circle cx="45" cy="48" r="1.7"/><circle cx="55" cy="48" r="1.7"/><circle cx="50" cy="56" r="1.7"/></g></g>`;
+  }
+  if (flower.kind === 'iris') art = `${stem}<g><path d="M50 52C30 46 25 32 33 21c10 3 16 12 17 25 1-13 7-22 17-25 8 11 3 25-17 31Z" fill="${a}"/><path d="M50 51C37 39 39 23 50 13c11 10 13 26 0 38Z" fill="#9aa0e1"/><path d="M49 50c-14-4-23 3-25 15 12 4 23-1 27-12 4 11 15 16 27 12-2-12-11-19-25-15" fill="${b}"/><path d="M44 49h12" stroke="#f5c957" stroke-width="4" stroke-linecap="round"/></g>`;
+  if (flower.kind === 'orchid') art = `${stem}<g stroke="#9a5ca8" stroke-width="1.1" stroke-linejoin="round"><path d="M49 48C40 44 32 36 33 25c8 1 15 6 18 15Z" fill="${a}"/><path d="M51 48C60 44 68 36 67 25c-8 1-15 6-18 15Z" fill="${a}"/><path d="M50 48C43 40 44 27 50 18c6 9 7 22 0 30Z" fill="#d69add"/><path d="M47 52C39 46 28 47 24 56c8 8 17 8 26 1Z" fill="${a}"/><path d="M53 52C61 46 72 47 76 56c-8 8-17 8-26 1Z" fill="${a}"/></g><g><path d="M37 47c5-5 21-5 26 0-1 11-6 19-13 22-7-3-12-11-13-22Z" fill="${b}"/><path d="M43 53c2-5 12-5 14 0-1 7-4 11-7 11s-6-4-7-11Z" fill="#f7c5dc"/><path d="M46 55c1-2 3-3 4-3s3 1 4 3c-2 3-6 3-8 0Z" fill="#be4d78"/><circle cx="43.5" cy="49" r="2" fill="#56325e"/><circle cx="56.5" cy="49" r="2" fill="#56325e"/><path d="M44 48 38 45M44 51l-7 1M56 48l6-3M56 51l7 1" fill="none" stroke="#704175" stroke-width="1.2" stroke-linecap="round"/></g>`;
+  if (flower.kind === 'lily') art = `${stem}<g stroke="#e4c994" stroke-width="1.2" stroke-linejoin="round"><path d="M50 56C43 45 42 28 50 13c8 15 7 32 0 43Z" fill="${a}"/><path d="M49 56C39 51 28 40 27 25c13 1 23 10 24 27Z" fill="${a}"/><path d="M51 56C61 51 72 40 73 25c-13 1-23 10-24 27Z" fill="${a}"/><path d="M48 57C37 57 27 50 22 39c13-1 24 5 29 14Z" fill="#fff9e9"/><path d="M52 57C63 57 73 50 78 39c-13-1-24 5-29 14Z" fill="#fff9e9"/><path d="M50 57C44 51 38 41 40 29c7 4 11 12 10 23Z" fill="#fffdf1"/></g><g stroke="${b}" stroke-width="1.7" stroke-linecap="round"><path d="M50 53 43 33M50 53l7-20M50 53V29M50 53 35 42M50 53l15-11"/></g><g fill="${b}"><circle cx="43" cy="32" r="2.4"/><circle cx="57" cy="32" r="2.4"/><circle cx="50" cy="28" r="2.4"/><circle cx="35" cy="41" r="2.2"/><circle cx="65" cy="41" r="2.2"/></g>`;
+  if (flower.kind === 'bird') art = `<path d="M41 82c5-20 10-29 19-39" fill="none" stroke="#3d8752" stroke-width="5" stroke-linecap="round"/><path d="M35 70c-12-7-18 2-12 9 5 5 11 1 15-2" fill="#65a85b"/><g><path d="M41 55c12-21 24-31 39-33-3 14-14 26-32 37Z" fill="${a}"/><path d="M39 56c3-19 0-29-7-37 13 4 21 15 18 36Z" fill="#f4b84d"/><path d="M42 58c17-11 30-12 39-7-8 10-21 15-37 13Z" fill="${b}"/><path d="M40 59c8-9 12-21 10-34-9 7-14 19-13 33Z" fill="#e66045"/></g>`;
+  if (flower.kind === 'nightbloom') {
+    const outerPetal = 'M50 57C40 48 35 33 50 9c15 24 10 39 0 48Z';
+    const innerPetal = 'M50 55C44 46 43 34 50 16c7 18 6 30 0 39Z';
+    art = `${stem}<g>${radialPetals(outerPetal, 8, '#dfeef2', '#b5ccd5', .8, 22.5)}${radialPetals(innerPetal, 10, a, '#f3e9d8', .7, 0)}<path d="M43 56c4-6 10-7 14 0-2 8-5 12-7 12s-5-4-7-12Z" fill="#fff5cf"/><circle cx="50" cy="56" r="5" fill="#f4d26a"/><g stroke="#d7a95b" stroke-width="1" stroke-linecap="round"><path d="M47 56 42 44M49 56l-1-15M51 56l1-15M53 56l5-12"/></g><g fill="#e8bc73"><circle cx="42" cy="44" r="1.5"/><circle cx="48" cy="41" r="1.5"/><circle cx="52" cy="41" r="1.5"/><circle cx="58" cy="44" r="1.5"/></g></g>`;
+  }
 
   return `<svg viewBox="0 0 100 100" aria-hidden="true">${art}</svg>`;
 }
@@ -126,33 +235,32 @@ function render({ animateTiles = true } = {}) {
   });
 
   scoreEl.textContent = score;
-  best = Math.max(best, score);
+  if (score > best) {
+    best = score;
+    localStorage.setItem('flower2048-best', best);
+  }
   bestEl.textContent = best;
-  localStorage.setItem('flower2048-best', best);
   undoBtn.disabled = !previous;
   renderCollection(highest);
   soundBtn.classList.toggle('sound-muted', !soundEnabled);
   soundBtn.setAttribute('aria-label', soundEnabled ? '关闭音效与音乐' : '开启音效与音乐');
   soundBtn.title = soundEnabled ? '关闭音效与音乐' : '开启音效与音乐';
-  toolShelfEl.querySelectorAll('.power-btn').forEach((button) => {
-    const tool = button.dataset.tool;
-    const count = toolCounts[tool];
-    button.classList.toggle('active', activeTool === tool);
+  TOOLS.forEach((tool) => {
+    const button = toolShelfEl.querySelector(`[data-tool="${tool.id}"]`);
+    const count = toolCounts[tool.id];
+    button.classList.toggle('active', activeTool === tool.id);
     button.disabled = count <= 0;
-    button.setAttribute('aria-pressed', String(activeTool === tool));
-    button.setAttribute('aria-label', `${button.querySelector('span').textContent}道具，剩余 ${count} 次`);
-    button.title = tool === 'remove' ? '铲除一张花朵' : tool === 'upgrade' ? '将一张花朵变为高级花朵' : '交换两张花朵的位置';
-    button.querySelector(`[data-tool-count="${tool}"]`).textContent = count;
+    button.setAttribute('aria-pressed', String(activeTool === tool.id));
+    button.setAttribute('aria-label', `${tool.name}道具，剩余 ${count} 次`);
+    button.title = tool.title;
+    button.querySelector(`[data-tool-count="${tool.id}"]`).textContent = count;
   });
-  const activeStatus = activeTool === 'remove'
-    ? '点击一张花朵卡片'
-    : activeTool === 'upgrade'
-      ? '点击一张花朵卡片'
-      : activeTool === 'swap' && selectedIndex === null
-        ? '点击第一张花朵卡片'
-        : activeTool === 'swap'
-          ? '再点击第二张花朵卡片'
-          : '';
+  const active = activeTool ? toolById(activeTool) : null;
+  const activeStatus = !active
+    ? ''
+    : active.hintNext && selectedIndex !== null
+      ? active.hintNext
+      : active.hint || '';
   toolStatusEl.textContent = activeStatus;
   toolStatusEl.classList.toggle('visible', Boolean(activeStatus));
   toolStatusEl.classList.remove('result');
@@ -169,7 +277,16 @@ function showToolResult(message) {
   }, 1400);
 }
 
+// 图鉴只在解锁集合变化时重建，否则每次 render（含道具切换）都要重绘 17 个 SVG。
+let collectionKey = null;
 function renderCollection(highest) {
+  const key = FLOWERS.map((flower) => {
+    if (flower.value === highest) return 'c';
+    return discovered.has(flower.value) || flower.value <= highest ? '1' : '0';
+  }).join('');
+  if (key === collectionKey) return;
+  collectionKey = key;
+
   collectionEl.innerHTML = FLOWERS.map((flower) => {
     const unlocked = discovered.has(flower.value) || flower.value <= highest;
     return `<div class="collect-item ${unlocked ? '' : 'locked'} ${flower.value === highest ? 'current' : ''}" style="--flower-bg:${flower.bg}" title="${unlocked ? flower.name : '尚未解锁'}">
@@ -181,7 +298,11 @@ function renderCollection(highest) {
   collectionCountEl.textContent = `${unlockedCount} / ${FLOWERS.length}`;
 }
 
+// 完整图鉴内容是静态的，建一次就够。
+let catalogBuilt = false;
 function renderCatalog() {
+  if (catalogBuilt) return;
+  catalogBuilt = true;
   catalogGridEl.innerHTML = FLOWERS.map((flower, index) => `<article class="catalog-item" style="--flower-bg:${flower.bg}">
     <div class="catalog-art">${flowerSvg(flower)}</div>
     <div><strong>${flower.name}</strong><small>成长阶段 ${index + 1}</small></div>
@@ -227,23 +348,35 @@ function getLines(direction) {
   return lines;
 }
 
+// 四个方向的行序是固定的，启动时算一次。
+const LINES = {
+  left: getLines('left'),
+  right: getLines('right'),
+  up: getLines('up'),
+  down: getLines('down')
+};
+
 function move(direction) {
-  if (!modalEl.hidden) return;
+  if (!modalEl.hidden || !catalogModalEl.hidden) return;
   startMusic();
   const before = [...board];
   const scoreBefore = score;
   let gained = 0;
   let biggestMerge = 0;
+  let biggestMergeCell = -1;
 
-  getLines(direction).forEach((line) => {
+  LINES[direction].forEach((line) => {
     const values = line.map((index) => board[index]).filter(Boolean);
     const merged = [];
     for (let i = 0; i < values.length; i += 1) {
       if (values[i] === values[i + 1]) {
         const next = values[i] * 2;
+        if (next > biggestMerge) {
+          biggestMerge = next;
+          biggestMergeCell = line[merged.length];
+        }
         merged.push(next);
         gained += next;
-        biggestMerge = Math.max(biggestMerge, next);
         i += 1;
       } else {
         merged.push(values[i]);
@@ -253,7 +386,11 @@ function move(direction) {
     line.forEach((index, i) => { board[index] = merged[i]; });
   });
 
-  if (board.every((value, index) => value === before[index])) return;
+  if (board.every((value, index) => value === before[index])) {
+    // 棋盘没变：可能是死局，仍要判一次结局，否则玩家会卡在没有弹窗的满盘上。
+    checkOutcome();
+    return;
+  }
   previous = { board: before, score: scoreBefore, discovered: [...discovered], toolCounts: { ...toolCounts } };
   score += gained;
   addFlower();
@@ -263,18 +400,25 @@ function move(direction) {
 
   if (gained) {
     showScoreGain(gained);
-    burstPetals(biggestMerge);
+    burstPetals(biggestMerge, biggestMergeCell);
     playTone(biggestMerge);
   } else {
     playTone(0);
   }
 
-  if (!won && board.includes(2048)) {
-    won = true;
-    setTimeout(() => showModal('win'), 330);
-  } else if (!canMove()) {
-    setTimeout(() => showModal('lose'), 330);
-  }
+  checkOutcome();
+}
+
+// 胜负判定的唯一入口：移动、道具、整理后都要走一遍。
+function checkOutcome() {
+  if (!modalEl.hidden || outcomeTimer) return;
+  const type = !won && board.includes(FLOWERS.at(-1).value) ? 'win' : !canMove() ? 'lose' : null;
+  if (!type) return;
+  if (type === 'win') won = true;
+  outcomeTimer = window.setTimeout(() => {
+    outcomeTimer = null;
+    showModal(type);
+  }, 330);
 }
 
 function canMove() {
@@ -296,9 +440,8 @@ function showScoreGain(amount) {
   scoreAddEl.classList.add('show');
 }
 
-function burstPetals(value) {
-  const index = board.indexOf(value);
-  if (index < 0) return;
+function burstPetals(value, index) {
+  if (!Number.isInteger(index) || index < 0) return;
   const col = index % 4;
   const row = Math.floor(index / 4);
   const x = (col + .5) * 25;
@@ -333,7 +476,7 @@ function playTone(value) {
     const oscillator = audioContext.createOscillator();
     const gain = audioContext.createGain();
     oscillator.type = 'sine';
-    oscillator.frequency.value = value ? 360 + Math.min(Math.log2(value), 11) * 35 : 250;
+    oscillator.frequency.value = value ? 360 + Math.min(Math.log2(value), FLOWERS.length) * 35 : 250;
     gain.gain.setValueAtTime(.045, audioContext.currentTime);
     gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + .13);
     oscillator.connect(gain).connect(audioContext.destination);
@@ -379,9 +522,9 @@ function stopMusic() {
 
 function showModal(type) {
   const win = type === 'win';
-  const flower = flowerFor(win ? 2048 : Math.max(...board));
+  const flower = flowerFor(win ? FLOWERS.at(-1).value : Math.max(...board));
   modalKickerEl.textContent = win ? '花园盛放' : '本季收成';
-  modalTitleEl.textContent = win ? '牡丹开花啦！' : '花园种满啦';
+  modalTitleEl.textContent = win ? `${flower.name}开花啦！` : '花园种满啦';
   modalMessageEl.textContent = win ? '你培育出了花园里最灿烂的花朵。' : `最终得分 ${score}，最高培育到${flower.name}。`;
   modalFlowerEl.innerHTML = flowerSvg(flower);
   continueBtn.hidden = !win;
@@ -395,19 +538,23 @@ function hideModal() {
 }
 
 function saveGame() {
-  localStorage.setItem('flower2048-save', JSON.stringify({ board, score, discovered: [...discovered], won, keepPlaying, toolCounts }));
+  localStorage.setItem('flower2048-save', JSON.stringify({ board, score, discovered: [...discovered], won, toolCounts }));
 }
 
 function loadGame() {
   try {
     const saved = JSON.parse(localStorage.getItem('flower2048-save'));
-    if (saved && Array.isArray(saved.board) && saved.board.length === 16 && saved.board.some(Boolean)) {
+    const validBoard = saved && Array.isArray(saved.board) && saved.board.length === 16
+      && saved.board.every((value) => Number.isFinite(value) && value >= 0)
+      && saved.board.some(Boolean);
+    if (validBoard) {
       board = saved.board;
-      score = Number(saved.score) || 0;
-      discovered = new Set(saved.discovered || [2]);
+      score = Math.max(0, Number(saved.score) || 0);
+      discovered = new Set(Array.isArray(saved.discovered) ? saved.discovered : [2]);
+      // won 表示「这局已经弹过胜利」。不能再要求昙花still在盘上：
+      // 玩家选了继续培育后把昙花合掉，重进就会重复弹一次胜利。
       won = Boolean(saved.won);
-      keepPlaying = Boolean(saved.keepPlaying);
-      toolCounts = { remove: 10, upgrade: 10, swap: 10, ...(saved.toolCounts || {}) };
+      toolCounts = makeToolCounts(saved.toolCounts);
       return true;
     }
   } catch (_) { /* Ignore invalid local saves. */ }
@@ -415,13 +562,14 @@ function loadGame() {
 }
 
 function newGame() {
+  window.clearTimeout(outcomeTimer);
+  outcomeTimer = null;
   board = Array(16).fill(0);
   score = 0;
   previous = null;
   discovered = new Set([2]);
   won = false;
-  keepPlaying = false;
-  toolCounts = { remove: 10, upgrade: 10, swap: 10 };
+  toolCounts = makeToolCounts();
   activeTool = null;
   selectedIndex = null;
   addFlower();
@@ -433,6 +581,9 @@ function newGame() {
 
 function undo() {
   if (!previous) return;
+  window.clearTimeout(outcomeTimer);
+  outcomeTimer = null;
+  if (!modalEl.hidden) hideModal();
   board = previous.board;
   score = previous.score;
   discovered = new Set(previous.discovered);
@@ -454,8 +605,11 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     undo();
   }
-  if (event.key === 'Escape' && !modalEl.hidden) hideModal();
-  if (event.key === 'Escape' && !catalogModalEl.hidden) closeCatalog();
+  if (event.key === 'Escape') {
+    // 图鉴优先关闭；结算弹窗只有「胜利」那次可以关掉继续玩，输了必须选新花园。
+    if (!catalogModalEl.hidden) closeCatalog();
+    else if (!modalEl.hidden && !continueBtn.hidden) hideModal();
+  }
 });
 
 boardEl.addEventListener('pointerdown', (event) => {
@@ -492,18 +646,59 @@ boardEl.addEventListener('pointercancel', () => {
 toolShelfEl.addEventListener('click', (event) => {
   const button = event.target.closest('.power-btn');
   if (!button || button.disabled) return;
-  const tool = button.dataset.tool;
-  activeTool = activeTool === tool ? null : tool;
+  const tool = toolById(button.dataset.tool);
+  if (tool.target === 'board') {
+    tool.run();
+    return;
+  }
+  activeTool = activeTool === tool.id ? null : tool.id;
   selectedIndex = null;
   toolPointerStart = null;
   render({ animateTiles: false });
 });
 
+// 整理的落位顺序（由小到大），逐行折返的蛇形，保证名次相邻的花朵在棋盘上也相邻、便于继续合并。
+// 棋盘格号            名次
+//  0  1  2  3        4  3  2  1
+//  4  5  6  7   →    5  6  7  8
+//  8  9 10 11       12 11 10  9
+// 12 13 14 15       13 14 15 16
+const TIDY_ORDER = [3, 2, 1, 0, 4, 5, 6, 7, 11, 10, 9, 8, 12, 13, 14, 15];
+
+function tidyBoard() {
+  const values = board.filter(Boolean).sort((a, b) => a - b);
+  const tidied = Array(16).fill(0);
+  // 不足 16 张时填在蛇形的尾段，最大的一张始终落在右下角。
+  const slots = TIDY_ORDER.slice(16 - values.length);
+  values.forEach((value, i) => { tidied[slots[i]] = value; });
+
+  activeTool = null;
+  selectedIndex = null;
+  toolPointerStart = null;
+
+  if (tidied.every((value, index) => value === board[index])) {
+    render({ animateTiles: false });
+    showToolResult('花园已经很整齐啦');
+    return;
+  }
+
+  previous = { board: [...board], score, discovered: [...discovered], toolCounts: { ...toolCounts } };
+  board = tidied;
+  spendTool('sort');
+  window.lastMergedValue = 0;
+  render();
+  saveGame();
+  playTone(0);
+  showToolResult('已把花朵从小到大排好');
+  checkOutcome();
+}
+
 function useToolOnTile(index) {
   if (!activeTool) return;
   if (!Number.isInteger(index) || !board[index]) return;
 
-  if (activeTool === 'swap' && selectedIndex === null) {
+  const tool = toolById(activeTool);
+  if (tool.target === 'pair' && selectedIndex === null) {
     selectedIndex = index;
     render({ animateTiles: false });
     return;
@@ -530,8 +725,8 @@ function useToolOnTile(index) {
     }
     [board[selectedIndex], board[index]] = [board[index], board[selectedIndex]];
   }
-  toolCounts[activeTool] -= 1;
-  const resultName = activeTool === 'remove' ? `已铲除${sourceFlower.name}` : activeTool === 'upgrade' ? `已将${sourceFlower.name}升级` : '已交换两张花朵';
+  spendTool(activeTool);
+  const resultName = tool.result(sourceFlower);
   activeTool = null;
   selectedIndex = null;
   window.lastMergedValue = 0;
@@ -539,6 +734,7 @@ function useToolOnTile(index) {
   saveGame();
   playTone(0);
   showToolResult(resultName);
+  checkOutcome();
 }
 
 tilesEl.addEventListener('pointerdown', (event) => {
@@ -579,7 +775,7 @@ tilesEl.addEventListener('pointercancel', () => {
 undoBtn.addEventListener('click', undo);
 newBtn.addEventListener('click', newGame);
 restartBtn.addEventListener('click', newGame);
-continueBtn.addEventListener('click', () => { keepPlaying = true; hideModal(); saveGame(); });
+continueBtn.addEventListener('click', () => { hideModal(); saveGame(); });
 catalogBtn.addEventListener('click', openCatalog);
 catalogCloseBtn.addEventListener('click', closeCatalog);
 catalogBackdropEl.addEventListener('click', closeCatalog);
@@ -607,3 +803,5 @@ if (!loadGame()) {
 render();
 saveGame();
 setTimeout(() => boardEl.focus(), 120);
+// 存档可能本身就是死局，进来先判一次。
+checkOutcome();
