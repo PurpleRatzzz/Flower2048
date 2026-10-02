@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=ZCOOL+KuaiLe&display=swap');
-
 :root {
   --ink: #22463d;
   --muted: #718076;
@@ -428,4 +426,53 @@ kbd { min-width: 20px; padding: 2px 4px; border: 1px solid rgba(56,94,73,.25); b
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
+
+/* Focused game layout: score, board, tools, and catalog are the only primary surfaces. */
+.game-shell {
+  width: min(100% - 28px, 620px);
+  padding-top: calc(24px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  padding-bottom: calc(28px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+.topbar {
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.scores { gap: 10px; }
+.score-box {
+  width: 132px;
+  min-height: 74px;
+  padding: 9px 8px 7px;
+  border-radius: 10px;
+}
+.score-box span { font-size: 12px; }
+.score-box strong { font-size: clamp(24px, 4vw, 30px); line-height: 1.35; letter-spacing: .01em; }
+.score-box b { top: 42px; }
+
+.garden-panel {
+  padding: 18px 18px 20px;
+  border-radius: 12px;
+}
+.board { width: min(100%, 560px); }
+.tool-shelf { margin-top: 18px; gap: 10px; }
+.power-btn { min-width: 122px; min-height: 42px; }
+.progress-section { margin-top: 18px; }
+
+@media (max-width: 620px) {
+  .game-shell {
+    width: min(100% - 20px, 520px);
+    padding-top: calc(15px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+    padding-bottom: calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  }
+  .topbar { margin-bottom: 10px; }
+  .scores { width: 100%; gap: 8px; }
+  .score-box { width: calc((100% - 8px) / 2); min-height: 68px; padding: 7px 5px 6px; }
+  .score-box span { font-size: 11px; }
+  .score-box strong { font-size: clamp(22px, 7vw, 28px); }
+  .garden-panel { padding: 11px 10px 16px; }
+  .tool-shelf { gap: 7px; margin-top: 14px; }
+  .power-btn { min-width: 0; flex: 1 1 calc(50% - 4px); min-height: 40px; padding: 0 8px; }
+  .progress-section { margin-top: 14px; }
 }
