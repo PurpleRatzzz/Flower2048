@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -9,26 +9,8 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <div class="sky" aria-hidden="true">
-      <span class="cloud cloud-one"></span>
-      <span class="cloud cloud-two"></span>
-      <span class="leaf leaf-one"></span>
-      <span class="leaf leaf-two"></span>
-      <span class="leaf leaf-three"></span>
-    </div>
-
     <main class="game-shell">
       <header class="topbar">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><i></i>
-          </div>
-          <div>
-            <h1>花漾 <strong>2048</strong></h1>
-            <p>合并花朵，绽放整座花园</p>
-          </div>
-        </div>
-
         <div class="scores" aria-label="游戏分数">
           <div class="score-box">
             <span>得分</span>
@@ -42,12 +24,8 @@
         </div>
       </header>
 
-      <section class="garden-panel" aria-labelledby="garden-title">
-        <div class="game-toolbar">
-          <div class="goal-copy">
-            <span class="eyebrow">今日花园</span>
-            <h2 id="garden-title">让昙花盛开吧</h2>
-          </div>
+      <section class="garden-panel" aria-label="花朵 2048 游戏区">
+        <div class="game-toolbar" aria-label="游戏操作">
           <div class="actions">
             <button id="sound-btn" class="icon-btn" type="button" aria-label="关闭音效与音乐" title="关闭音效与音乐">
               <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Zm4.5 3.5a5 5 0 0 1 0 7M18 6a8 8 0 0 1 0 12"/></svg>
@@ -63,7 +41,6 @@
             </button>
           </div>
         </div>
-
         <div class="board-wrap">
           <div id="board" class="board" role="application" aria-label="花朵 2048 游戏棋盘" tabindex="0">
             <div id="grid" class="grid" aria-hidden="true"></div>
@@ -76,10 +53,6 @@
         <div id="tool-shelf" class="tool-shelf" aria-label="花园道具"></div>
         <div id="tool-status" class="tool-status" aria-live="polite"></div>
 
-        <div class="garden-floor" aria-hidden="true">
-          <span class="grass g1"></span><span class="grass g2"></span><span class="grass g3"></span>
-          <span class="grass g4"></span><span class="grass g5"></span><span class="grass g6"></span>
-        </div>
       </section>
 
       <section class="progress-section" aria-label="花朵成长图鉴">
@@ -96,7 +69,6 @@
         <div id="collection" class="collection"></div>
       </section>
 
-      <p class="hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 移动花朵 <span></span> 手机可直接滑动</p>
     </main>
 
     <div id="modal" class="modal" hidden>
@@ -118,9 +90,7 @@
       <section class="catalog-content" role="dialog" aria-modal="true" aria-labelledby="catalog-title">
         <div class="catalog-header">
           <div>
-            <span class="modal-kicker">花园收藏册</span>
             <h2 id="catalog-title">花朵图鉴</h2>
-            <p>从一粒花种，到整座花园的盛放。</p>
           </div>
           <button id="catalog-close" class="icon-btn catalog-close" type="button" aria-label="关闭完整图鉴" title="关闭图鉴">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>

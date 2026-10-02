@@ -240,11 +240,13 @@ function render({ animateTiles = true } = {}) {
     localStorage.setItem('flower2048-best', best);
   }
   bestEl.textContent = best;
-  undoBtn.disabled = !previous;
+  if (undoBtn) undoBtn.disabled = !previous;
   renderCollection(highest);
-  soundBtn.classList.toggle('sound-muted', !soundEnabled);
-  soundBtn.setAttribute('aria-label', soundEnabled ? '关闭音效与音乐' : '开启音效与音乐');
-  soundBtn.title = soundEnabled ? '关闭音效与音乐' : '开启音效与音乐';
+  if (soundBtn) {
+    soundBtn.classList.toggle('sound-muted', !soundEnabled);
+    soundBtn.setAttribute('aria-label', soundEnabled ? '关闭音效与音乐' : '开启音效与音乐');
+    soundBtn.title = soundEnabled ? '关闭音效与音乐' : '开启音效与音乐';
+  }
   TOOLS.forEach((tool) => {
     const button = toolShelfEl.querySelector(`[data-tool="${tool.id}"]`);
     const count = toolCounts[tool.id];
@@ -772,14 +774,14 @@ tilesEl.addEventListener('pointercancel', () => {
   toolPointerStart = null;
 });
 
-undoBtn.addEventListener('click', undo);
-newBtn.addEventListener('click', newGame);
+if (undoBtn) undoBtn.addEventListener('click', undo);
+if (newBtn) newBtn.addEventListener('click', newGame);
 restartBtn.addEventListener('click', newGame);
 continueBtn.addEventListener('click', () => { hideModal(); saveGame(); });
 catalogBtn.addEventListener('click', openCatalog);
 catalogCloseBtn.addEventListener('click', closeCatalog);
 catalogBackdropEl.addEventListener('click', closeCatalog);
-soundBtn.addEventListener('click', () => {
+if (soundBtn) soundBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   localStorage.setItem('flower2048-sound', soundEnabled ? 'on' : 'off');
   render({ animateTiles: false });
